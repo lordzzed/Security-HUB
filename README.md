@@ -86,6 +86,12 @@ source venv/bin/activate
 python3 coletor.py
 ```
 
+**4. Visualizar o relatório gerado**
+```bash
+cd relatorios
+python3 -m http.server 8080
+```
+
 ---
 
 ## 📁 Estrutura do repositório
@@ -123,7 +129,7 @@ Webhook → Ollama (Mistral) → Execute (WeasyPrint)
 
 ```json
 {
-  "name": "My workflow",
+  "name": "Security Hub - Auditoria Final",
   "nodes": [
     {
       "parameters": {
@@ -131,16 +137,11 @@ Webhook → Ollama (Mistral) → Execute (WeasyPrint)
         "path": "coleta-headers",
         "options": {}
       },
+      "id": "30d1a92b-415c-41b0-b4a3-73e4b498627b",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [
-        -256,
-        -64
-      ],
-      "id": "30d1a92b-415c-41b0-b4a3-73e4b498627b",
-      "webhookId": "ace36ac1-fa9d-4358-9787-e2f1d65031b0",
-      "notesInFlow": false
+      "position": [-256, -64]
     },
     {
       "parameters": {
@@ -148,123 +149,59 @@ Webhook → Ollama (Mistral) → Execute (WeasyPrint)
         "url": "http://172.23.105.14:11434/api/generate",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({\n  \"model\": \"mistral\",\n  \"prompt\": \"Aja como um analista de infraestrutura de TI. Analise os seguintes cabeçalhos HTTP extraídos do alvo \" + $json.body?.alvo + \".\\n\\nDados brutos: \" + JSON.stringify($json.body?.dados_brutos) + \"\\n\\nREGRAS:\\n1. Responda EXCLUSIVAMENTE em Português do Brasil.\\n2. O relatório deve começar EXATAMENTE com o seguinte título: 'Relatório de análise de cabeçalhos da aplicação'\\n3. Aponte estritamente quais cabeçalhos essenciais de segurança (HSTS, CSP, X-Frame-Options) estão ausentes ou mal configurados, explicando o risco.\\n\\nRelatório:\",\n  \"stream\": false\n}) }}",
+        "jsonBody": "={{ JSON.stringify({\n  \"model\": \"llama3.2\",\n  \"prompt\": \"[ANALISTA APPSEC]\\nSua tarefa é auditar os cabeçalhos HTTP recebidos abaixo.\\n\\nDADOS BRUTOS:\\n\" + JSON.stringify($json.body?.dados_brutos) + \"\\n\\nREGRAS:\\n1. Verifique: Strict-Transport-Security, Content-Security-Policy e X-Frame-Options.\\n2. Responda apenas o que está FALTANDO e o RISCO real.\\n3. Idioma: Português do Brasil.\\n4. Seja direto, sem introduções genéricas.\\n\\nRESULTADO DA AUDITORIA:\",\n  \"stream\": false\n}) }}",
         "options": {
           "timeout": 1200000
         }
       },
+      "id": "afd8fab3-4319-48cc-b0a9-88589ac43607",
       "name": "HTTP Request",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.1,
-      "position": [
-        -32,
-        -64
-      ],
-      "id": "afd8fab3-4319-48cc-b0a9-88589ac43607"
+      "position": [-32, -64]
     },
     {
       "parameters": {
         "mode": "markdownToHtml",
-        "markdown": "=={{ $json.response }}",
+        "markdown": "={{ $json.response }}",
         "destinationKey": "html_bruto",
         "options": {}
       },
+      "id": "95676062-e755-4746-ab4e-33ec16d182f6",
       "name": "Markdown",
       "type": "n8n-nodes-base.markdown",
       "typeVersion": 1,
-      "position": [
-        192,
-        -64
-      ],
-      "id": "95676062-e755-4746-ab4e-33ec16d182f6"
+      "position": [192, -64]
     },
     {
       "parameters": {
-        "jsCode": "const textoHtml = $input.first().json.html_bruto;\n\nconst htmlFormatado = `\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n    <meta charset=\"UTF-8\">\n    <style>\n        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #2c3e50; margin: 40px auto; max-width: 900px; }\n        h1 { color: #1a252f; border-bottom: 2px solid #3498db; padding-bottom: 10px; text-transform: first-letter; }\n        h2, h3 { color: #2980b9; margin-top: 30px; }\n        p { text-align: justify; }\n        strong { color: #e74c3c; } \n        code { background: #f4f6f7; padding: 2px 6px; border-radius: 4px; font-family: monospace; color: #c0392b; }\n    </style>\n</head>\n<body>\n    ${textoHtml}\n</body>\n</html>\n`;\n\nconst buffer = Buffer.from(htmlFormatado, 'utf8');\n\nreturn {\n    json: { mensagem: \"Documento pronto para gravação.\" },\n    binary: {\n        data: {\n            data: buffer.toString('base64'),\n            mimeType: 'text/html',\n            fileName: 'relatorio_httpbin.html'\n        }\n    }\n};"
+        "jsCode": "const textoHtml = $input.first().json.html_bruto;\n\nconst htmlFormatado = `\n<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n    <meta charset=\"UTF-8\">\n    <style>\n        body { font-family: 'Segoe UI', sans-serif; line-height: 1.6; color: #2c3e50; margin: 40px auto; max-width: 900px; }\n        /* Estilo V: Primeira letra maiúscula apenas */\n        h1 { color: #1a252f; border-bottom: 2px solid #3498db; padding-bottom: 10px; text-transform: lowercase; }\n        h1::first-letter { text-transform: uppercase; }\n        h2, h3 { color: #2980b9; margin-top: 30px; }\n        .security-note { background: #fdf2f2; border-left: 5px solid #e74c3c; padding: 15px; border-radius: 4px; }\n    </style>\n</head>\n<body>\n    <h1>Relatório de análise de vulnerabilidades</h1>\n    <div class=\"security-note\">\n        ${textoHtml.replace(/\\n/g, '<br>')}\n    </div>\n</body>\n</html>\n`;\n\nconst buffer = Buffer.from(htmlFormatado, 'utf8');\n\nreturn {\n    json: { mensagem: \"Documento pronto para gravação.\" },\n    binary: {\n        data: {\n            data: buffer.toString('base64'),\n            mimeType: 'text/html',\n            fileName: 'relatorio_seguranca.html'\n        }\n    }\n};"
       },
+      "id": "a6ff07a2-0a51-4036-9db3-e848162a8772",
       "name": "Code",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        416,
-        -64
-      ],
-      "id": "a6ff07a2-0a51-4036-9db3-e848162a8772"
+      "position": [416, -64]
     },
     {
       "parameters": {
         "operation": "write",
-        "fileName": "/home/node/relatorios/relatorio_httpbin.html",
+        "fileName": "/home/node/relatorios/relatorio_seguranca.html",
         "options": {}
       },
+      "id": "36e699bc-362a-4a51-a020-baad6e112847",
       "name": "Read/Write Files from Disk",
       "type": "n8n-nodes-base.readWriteFile",
       "typeVersion": 1.1,
-      "position": [
-        624,
-        -64
-      ],
-      "id": "36e699bc-362a-4a51-a020-baad6e112847"
+      "position": [624, -64]
     }
   ],
-  "pinData": {},
   "connections": {
-    "Webhook": {
-      "main": [
-        [
-          {
-            "node": "HTTP Request",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTTP Request": {
-      "main": [
-        [
-          {
-            "node": "Markdown",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Markdown": {
-      "main": [
-        [
-          {
-            "node": "Code",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Code": {
-      "main": [
-        [
-          {
-            "node": "Read/Write Files from Disk",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    }
-  },
-  "active": false,
-  "settings": {
-    "executionOrder": "v1",
-    "binaryMode": "separate"
-  },
-  "versionId": "3ff58103-9cf1-460f-af0c-96a4c5c16661",
-  "meta": {
-    "instanceId": "e19fd8df4b2e3b88d1cdb2290f8c9e8fcfa79a19cc0ae1234aeffbe87b9f094e"
-  },
-  "id": "IKqL3MAZDgrXXOGa",
-  "tags": []
+    "Webhook": { "main": [[{ "node": "HTTP Request", "type": "main", "index": 0 }]] },
+    "HTTP Request": { "main": [[{ "node": "Markdown", "type": "main", "index": 0 }]] },
+    "Markdown": { "main": [[{ "node": "Code", "type": "main", "index": 0 }]] },
+    "Code": { "main": [[{ "node": "Read/Write Files from Disk", "type": "main", "index": 0 }]] }
+  }
 }
 ```
 
