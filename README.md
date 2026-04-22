@@ -96,3 +96,91 @@ python3 coletor.py
 | `gerar_pdf.py` | Motor de renderização WeasyPrint |
 | `setup.sh` | Automação de infra e TDD de ambiente |
 | `simulador.html` | Interface visual de PoC (Ataques) |
+
+---
+
+## 🔄 Fluxo n8n — Exportação do Workflow
+
+O arquivo abaixo representa o workflow completo do n8n e pode ser importado diretamente na interface do orquestrador em **Settings → Import Workflow**.
+
+### Nós do Pipeline
+
+| ID | Nome | Tipo | Função |
+|---|---|---|---|
+| `1` | Webhook - Receptor de headers | `n8n-nodes-base.webhook` | Recebe o payload JSON via `POST /security-hub` |
+| `2` | Ollama - Auditoria preditiva | `n8n-nodes-base.httpRequest` | Envia os headers ao Mistral com prompt de auditoria |
+| `3` | Execute - Gerador de laudo | `n8n-nodes-base.executeCommand` | Aciona `gerar_pdf.py` com a resposta da IA |
+
+### Fluxo de execução
+
+```
+Webhook → Ollama (Mistral) → Execute (WeasyPrint)
+```
+
+> **Prompt de auditoria:** o nó do Ollama injeta os headers capturados dinamicamente, solicitando ao Mistral a geração de um laudo HTML com foco em `HSTS`, `CSP` e `X-Frame-Options`.
+
+### JSON do Workflow
+
+```json
+{
+  "name": "Security hub - Auditoria preditiva",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "security-hub",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook - Receptor de headers",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:11434/api/generate",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "model", "value": "mistral" },
+            {
+              "name": "prompt",
+              "value": "={{ 'Analise os seguintes cabeçalhos HTTP de segurança e gere um laudo técnico em HTML. Foco em HSTS, CSP e X-Frame-Options: ' + JSON.stringify($node[\"Webhook - Receptor de headers\"].json.body.headers) }}"
+            },
+            { "name": "stream", "value": "false" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2",
+      "name": "Ollama - Auditoria preditiva",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "command": "={{ \"./venv/bin/python gerar_pdf.py '\" + $node[\"Ollama - Auditoria preditiva\"].json.response + \"'\" }}"
+      },
+      "id": "3",
+      "name": "Execute - Gerador de laudo",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [690, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Receptor de headers": {
+      "main": [[{ "node": "Ollama - Auditoria preditiva", "type": "main", "index": 0 }]]
+    },
+    "Ollama - Auditoria preditiva": {
+      "main": [[{ "node": "Execute - Gerador de laudo", "type": "main", "index": 0 }]]
+    }
+  }
+}
+```
+
+> **Como importar:** acesse o n8n → menu lateral → **Workflows → Import from JSON** → cole o conteúdo acima.
