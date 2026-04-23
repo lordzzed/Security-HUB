@@ -62,6 +62,18 @@ command -v docker >/dev/null && echo -e "${GREEN}[+] Docker OK${NC}"
 command -v ollama >/dev/null && echo -e "${GREEN}[+] Ollama OK${NC}"
 ollama list | grep -q "llama3.2" && echo -e "${GREEN}[+] Llama 3.2 pronto${NC}"
 
+# Fase 6: Checkout
+echo -e "${YELLOW}[*] Garantindo que a porta 11434 esteja livre para o Docker...${NC}"
+
+# Se o serviço existir, desativa
+if systemctl is-active --quiet ollama; then
+    sudo systemctl disable --now ollama >/dev/null 2>&1 || true
+    sudo systemctl mask ollama >/dev/null 2>&1 || true
+fi
+
+# Mata qualquer processo remanescente (limpeza agressiva)
+sudo fuser -k 11434/tcp >/dev/null 2>&1 || true
+
 echo -e "${GREEN}======================================================${NC}"
 echo -e "${GREEN}[+] Setup concluído! Os modelos estão prontos.${NC}"
 echo -e "${GREEN}======================================================${NC}"
