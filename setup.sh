@@ -27,7 +27,21 @@ if ! command -v ollama &> /dev/null; then
     curl -fsSL https://ollama.com/install.sh | sh
 fi
 
-echo -e "${YELLOW}[*] Baixando modelos (Mistral + Llama 3.2)...${NC}"
+# Tenta subir o serviço se ele não estiver rodando
+if ! pgrep -x "ollama" > /dev/null; then
+    echo -e "${YELLOW}[*] Servidor Ollama não detectado. Iniciando...${NC}"
+    ollama serve > /dev/null 2>&1 &
+    
+    # Aguarda o servidor acordar (TDD de infra)
+    echo -ne "${YELLOW}[*] Aguardando o servidor responder...${NC}"
+    until curl -s http://localhost:11434/api/tags > /dev/null; do
+        echo -ne "."
+        sleep 2
+    done
+    echo -e "${GREEN} OK!${NC}"
+fi
+
+echo -e "${YELLOW}[*] Baixando modelos...${NC}"
 ollama pull mistral
 ollama pull llama3.2
 
