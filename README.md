@@ -77,19 +77,19 @@ sudo ./setup.sh
 
 **2. Inicialização da infra**
 ```bash
-docker-compose up -d
+sudo docker-compose up -d
 ```
 
 **3. Execução do laboratório**
 ```bash
 source venv/bin/activate
-python3 coletor.py
+sudo python3 coletor.py
 ```
 
 **4. Visualizar o relatório gerado**
 ```bash
 cd relatorios
-python3 -m http.server 8080
+sudo python3 -m http.server 8080
 ```
 
 ---
